@@ -120,7 +120,7 @@ class ShapefileParser(GeospatialParser):
         self, index: int, record: Any, field_names: list[str]
     ) -> ParsedFeature:
         properties = self._clean_record(record.record, field_names)
-        source_id = _derive_source_id(properties, index)
+        source_id = _derive_source_id(properties)
 
         shape = record.shape
         if getattr(shape, "shapeType", None) == NULL_SHAPE_TYPE:
@@ -214,10 +214,52 @@ def _sibling(shp_path: Path, extension: str) -> Path:
     return upper if upper.exists() else lower
 
 
-def _derive_source_id(properties: dict[str, Any], index: int) -> str | None:
-    """Pick a human-meaningful identifier from the attribute table."""
-    for key in ("id", "ID", "Id", "fid", "FID", "name", "NAME", "Name", "gid", "OBJECTID"):
-        value = properties.get(key)
-        if value not in (None, ""):
-            return str(value)
+_ID_FIELDS = ("id", "fid", "gid", "objectid", "uid", "uuid")
+_NAME_FIELDS = ("name", "title", "label")
+
+
+def _derive_source_id(properties: dict[str, Any]) -> str | None:
+    """Pick a human-meaningful identifier from the attribute table.
+
+    A shapefile's .dbf has no standard identifier column, so this is a
+    heuristic applied in priority order:
+
+    1. a well-known identifier field -- id, fid, gid, objectid, uid, uuid
+    2. any field ending in ``_id`` -- plot_id, asset_id, parcel_id, ...
+    3. a descriptive label -- name, title, label
+
+    Rule 2 matters in practice: real survey data almost never has a bare
+    ``id`` column, it has a domain-specific one. Matching is case-insensitive
+    because .dbf field names arrive upper-case from some toolchains and
+    lower-case from others.
+
+    Returns None when nothing suitable exists. The caller always has
+    ``feature_index`` as a fallback identifier, so this is never load-bearing.
+    """
+    # First spelling of each name wins, following .dbf field order.
+    by_lower: dict[str, str] = {}
+    for key in properties:
+        by_lower.setdefault(key.lower(), key)
+
+    def value_of(original_key: str) -> str | None:
+        value = properties.get(original_key)
+        if value in (None, ""):
+            return None
+        text = str(value).strip()
+        return text or None
+
+    for candidate in _ID_FIELDS:
+        original = by_lower.get(candidate)
+        if original and (found := value_of(original)):
+            return found
+
+    for lower, original in by_lower.items():
+        if lower.endswith("_id") and (found := value_of(original)):
+            return found
+
+    for candidate in _NAME_FIELDS:
+        original = by_lower.get(candidate)
+        if original and (found := value_of(original)):
+            return found
+
     return None

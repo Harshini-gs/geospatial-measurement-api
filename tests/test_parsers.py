@@ -122,6 +122,27 @@ def test_shapefile_parses_geometry_crs_and_attributes(polygon_shapefile_zip: Pat
     assert not dataset.warnings
 
 
+@pytest.mark.parametrize(
+    ("attributes", "expected"),
+    [
+        ({"id": "A1"}, "A1"),
+        ({"OBJECTID": 42}, "42"),
+        ({"plot_id": "PLOT-A1"}, "PLOT-A1"),        # domain-specific id
+        ({"ASSET_ID": "PIPE-07"}, "PIPE-07"),       # upper-case .dbf field
+        ({"name": "North Field"}, "North Field"),
+        ({"id": "A1", "name": "ignored"}, "A1"),    # id outranks name
+        ({"plot_id": "  P2  "}, "P2"),              # dBase space padding
+        ({"area": 120.5, "owner": "Ops"}, None),    # nothing identifier-like
+        ({"id": ""}, None),                         # blank is not an id
+    ],
+)
+def test_source_id_heuristic(attributes, expected):
+    """Real shapefiles rarely have a bare 'id' column; they have 'plot_id'."""
+    from app.services.parsers.shapefile_parser import _derive_source_id
+
+    assert _derive_source_id(attributes) == expected
+
+
 def test_missing_prj_warns_and_assumes_wgs84(shapefile_zip_without_prj: Path):
     dataset = ShapefileParser().parse(shapefile_zip_without_prj)
 

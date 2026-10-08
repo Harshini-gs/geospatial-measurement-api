@@ -94,19 +94,22 @@ Accepted: `.zip` (Shapefile), `.kml`, `.kmz`
 
 Returns **202 Accepted** — processing runs in the background.
 
+Every example response in this section is real output from
+`sample_data/survey_site.kml`, not illustrative values.
+
 ```json
 {
-  "id": "3f2a9c8e4b1d4e7a9c0f5b2d8e6a1c3f",
+  "id": "e109f3c22cce40afaa2c84a428aa7d4e",
   "filename": "survey_site.kml",
   "file_type": "KML",
-  "size_bytes": 2847,
+  "size_bytes": 3448,
   "status": "PENDING",
-  "created_at": "2026-10-08T09:14:22.104Z",
+  "created_at": "2026-10-08T09:48:07.412Z",
   "message": "File accepted. Poll the status endpoint until status is COMPLETED.",
   "links": {
-    "self": "http://localhost:8000/api/files/3f2a.../",
-    "measurements": "http://localhost:8000/api/files/3f2a.../measurements/",
-    "features": "http://localhost:8000/api/files/3f2a.../features/"
+    "self": "http://localhost:8000/api/files/e109f3c2.../",
+    "measurements": "http://localhost:8000/api/files/e109f3c2.../measurements/",
+    "features": "http://localhost:8000/api/files/e109f3c2.../features/"
   }
 }
 ```
@@ -124,10 +127,10 @@ File information and processing state.
 
 ```json
 {
-  "id": "3f2a9c8e4b1d4e7a9c0f5b2d8e6a1c3f",
+  "id": "e109f3c22cce40afaa2c84a428aa7d4e",
   "filename": "survey_site.kml",
   "file_type": "KML",
-  "size_bytes": 2847,
+  "size_bytes": 3448,
   "status": "COMPLETED",
   "crs": "EPSG:4326",
   "crs_name": "WGS 84",
@@ -135,9 +138,9 @@ File information and processing state.
   "feature_count": 5,
   "error_message": null,
   "warnings": [],
-  "created_at": "2026-10-08T09:14:22.104Z",
-  "updated_at": "2026-10-08T09:14:22.331Z",
-  "processing_duration_seconds": 0.0271
+  "created_at": "2026-10-08T09:48:07.412Z",
+  "updated_at": "2026-10-08T09:48:07.434Z",
+  "processing_duration_seconds": 0.022
 }
 ```
 
@@ -152,7 +155,7 @@ Query parameters: `limit`, `offset`, `include_geometry` (default `false`).
 
 ```json
 {
-  "file_id": "3f2a9c8e4b1d4e7a9c0f5b2d8e6a1c3f",
+  "file_id": "e109f3c22cce40afaa2c84a428aa7d4e",
   "filename": "survey_site.kml",
   "status": "COMPLETED",
   "crs": "EPSG:4326",
@@ -161,14 +164,14 @@ Query parameters: `limit`, `offset`, `include_geometry` (default `false`).
     "measured_count": 5,
     "unsupported_count": 0,
     "geometry_type_counts": {
-      "Polygon": 1, "LineString": 1, "MultiLineString": 1,
-      "Point": 1, "MultiPolygon": 1
+      "LineString": 1, "MultiLineString": 1, "MultiPolygon": 1,
+      "Point": 1, "Polygon": 1
     },
-    "total_area_sqm": 1221458.6342,
-    "total_area_hectares": 122.145863,
-    "total_area_sqkm": 1.22145863,
-    "total_length_m": 2419.8871,
-    "total_length_km": 2.4198871,
+    "total_area_sqm": 1177650.8227,
+    "total_area_hectares": 117.765082,
+    "total_area_sqkm": 1.17765082,
+    "total_length_m": 2132.7008,
+    "total_length_km": 2.1327008,
     "measurement_methods_used": ["utm_projection"]
   },
   "pagination": { "total": 5, "limit": 100, "offset": 0, "has_more": false },
@@ -181,10 +184,10 @@ Query parameters: `limit`, `offset`, `include_geometry` (default `false`).
       "skip_reason": null,
       "measurement": {
         "measurement_type": "area",
-        "area_sqm": 1194856.2471,
-        "area_hectares": 119.485625,
-        "area_sqkm": 1.19485625,
-        "perimeter_m": 4381.9043,
+        "area_sqm": 1153616.4459,
+        "area_hectares": 115.361645,
+        "area_sqkm": 1.15361645,
+        "perimeter_m": 5262.0753,
         "length_m": null,
         "length_km": null,
         "measurement_crs": "EPSG:32643",
@@ -192,11 +195,33 @@ Query parameters: `limit`, `offset`, `include_geometry` (default `false`).
       },
       "properties": {
         "name": "Plot A1",
+        "description": "Primary survey plot, roughly 1100 m x 1100 m.",
         "owner": "Site Operations",
-        "land_use": "industrial",
-        "survey_date": "2026-03-14"
+        "survey_date": "2026-03-14",
+        "land_use": "industrial"
       },
       "bbox": [77.59, 12.97, 77.6, 12.98],
+      "geometry": null
+    },
+    {
+      "feature_index": 3,
+      "feature_id": "benchmark-01",
+      "geometry_type": "Point",
+      "supported": true,
+      "skip_reason": null,
+      "measurement": {
+        "measurement_type": "none",
+        "area_sqm": null,
+        "area_hectares": null,
+        "area_sqkm": null,
+        "perimeter_m": null,
+        "length_m": null,
+        "length_km": null,
+        "measurement_crs": null,
+        "measurement_method": "not_applicable"
+      },
+      "properties": { "name": "Survey Benchmark", "elevation_m": "916" },
+      "bbox": [77.5946, 12.9716, 77.5946, 12.9716],
       "geometry": null
     }
   ]
@@ -325,8 +350,8 @@ This is the heart of the assignment, so it gets its own section.
 
 **The problem.** A degree of longitude is about 111 km at the equator and 0 km
 at the poles. Computing `polygon.area` on EPSG:4326 coordinates yields "square
-degrees", a unit that does not correspond to any physical area. The sample plot
-in `survey_site.kml` measures `0.0001` in square degrees and `1 194 856 m²` in
+degrees", a unit that does not correspond to any physical area. A 0.01° × 0.01°
+plot near Bengaluru measures `0.0001` in square degrees and `1 201 684 m²` in
 reality — a factor of twelve billion.
 
 **The solution**, chosen **per feature**:
@@ -472,7 +497,7 @@ pip install -r requirements.txt
 pytest -v
 ```
 
-Roughly 70 tests across four files:
+97 tests across four files:
 
 | File | Covers |
 |---|---|
@@ -489,8 +514,17 @@ degree area by a factor of more than 10⁹.
 
 **`test_utm_and_geodesic_agree_for_a_local_polygon`** cross-validates the
 projected path against the ellipsoidal one. Two mathematically independent
-methods agreeing to within 0.1% is far stronger evidence of correctness than
-either matching a number I wrote down myself.
+methods agreeing is far stronger evidence of correctness than either matching a
+number I wrote down myself.
+
+They agree closely but not exactly, and the gap is physics rather than error.
+UTM is conformal: it preserves angles, not areas. Its scale factor is 0.9996 on
+a zone's central meridian and grows towards the edges, with area distortion
+going as the square of it. The sample plot sits about 2.6° from zone 43N's
+central meridian, which predicts roughly +0.11% inflation — and 0.116% is what
+the two methods differ by. A companion test asserts the error is smallest on
+the central meridian, so that agreement is demonstrably a property of the
+projection rather than a coincidence.
 
 The UTM assertions use real cities (Bengaluru → 43N, London → 30N, Sydney →
 56S) whose zones are independently documented, so a regression is caught
@@ -502,7 +536,7 @@ when the test was written.
 ## What I learned
 
 **Degrees are not a unit of distance.** I knew this abstractly. Seeing the same
-polygon return `0.0001` and `1 194 856` depending on one projection step made
+polygon return `0.0001` and `1 201 684` depending on one projection step made
 it concrete, and made me realise the CRS decision is the actual engineering
 problem here — the rest is plumbing.
 
@@ -527,6 +561,15 @@ with a reason. That distinction shaped the whole response schema.
 hardcoded expected areas, then realised I was only testing that the code still
 did what it did when I wrote it. Checking UTM against geodesic tests the maths
 instead of the memory.
+
+**A failing test is a question, not a verdict.** My cross-validation test
+demanded 0.1% agreement and failed at 0.116%. The instinct is to widen the
+tolerance until it passes. Working out what the disagreement *should* be —
+k² distortion growing with distance from the central meridian — showed the
+measurement was right and my expectation was wrong, and produced a second test
+that pins the error to zone geometry. Had I just loosened the number, the test
+would have been measuring where I happened to put the sample polygon rather
+than whether the code was correct.
 
 ---
 

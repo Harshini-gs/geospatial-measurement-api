@@ -55,7 +55,20 @@ def test_area_is_not_computed_in_square_degrees():
 
 
 def test_utm_and_geodesic_agree_for_a_local_polygon():
-    """Cross-validate the projected path against the ellipsoidal one."""
+    """Cross-validate the projected path against the ellipsoidal one.
+
+    These must agree closely, but not exactly, and the gap is physics rather
+    than error. UTM is a conformal projection: it preserves angles, not
+    areas. Its scale factor is 0.9996 on the zone's central meridian and
+    grows towards the zone edges, with area distortion going as the square
+    of it. Within one zone that bounds the disagreement at a few parts per
+    thousand, so 0.3% is the correct expectation and exact equality is not.
+
+    This plot sits at 77.6E, roughly 2.6 degrees from zone 43N's central
+    meridian at 75E, which predicts about +0.11% area inflation -- and that
+    is what we see. Two independent methods differing by exactly the amount
+    projection theory predicts is evidence that both are right.
+    """
     from pyproj import Geod
 
     projected = measure(PLOT, WGS84)
@@ -63,7 +76,30 @@ def test_utm_and_geodesic_agree_for_a_local_polygon():
 
     geodesic_area, _ = Geod(ellps="WGS84").geometry_area_perimeter(PLOT)
 
-    assert projected.area_sqm == pytest.approx(abs(geodesic_area), rel=1e-3)
+    assert projected.area_sqm == pytest.approx(abs(geodesic_area), rel=3e-3)
+
+
+def test_utm_distortion_is_smallest_on_the_central_meridian():
+    """Projection error must track zone geometry rather than be arbitrary.
+
+    Zone 43N's central meridian is 75E. A polygon sitting on it should match
+    the geodesic answer more closely than one out near the zone edge. If this
+    relationship did not hold, the agreement in the test above would be
+    coincidence rather than correctness.
+    """
+    from pyproj import Geod
+
+    geod = Geod(ellps="WGS84")
+
+    def relative_error(polygon) -> float:
+        projected = measure(polygon, WGS84).area_sqm
+        true_area, _ = geod.geometry_area_perimeter(polygon)
+        return abs(projected - abs(true_area)) / abs(true_area)
+
+    on_central_meridian = box(74.995, 12.970, 75.005, 12.980)
+
+    assert relative_error(on_central_meridian) < 1e-3
+    assert relative_error(PLOT) > relative_error(on_central_meridian)
 
 
 def test_local_polygon_selects_the_right_utm_zone():
