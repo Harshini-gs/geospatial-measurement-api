@@ -1,0 +1,28 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      LOG_LEVEL: INFO
+      # Uncomment to run against Postgres instead of SQLite, and start the
+      # db service below. No code changes are required.
+      # DATABASE_URL: postgresql+psycopg://geo:geo@db:5432/geospatial
+    volumes:
+      - storage:/app/storage
+    restart: unless-stopped
+
+  # Not started by default. Enable with:  docker compose --profile postgres up
+  db:
+    image: postgres:16-alpine
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_USER: geo
+      POSTGRES_PASSWORD: geo
+      POSTGRES_DB: geospatial
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  storage:
+  pgdata:
