@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Sample Survey Site</name>
+    <description>
+      Hand-written fixture exercising every supported KML geometry.
+      Located near Bengaluru, India -- UTM zone 43N (EPSG:32643).
+    </description>
+
+    <!-- Polygon with an inner boundary (a plot with an excluded pond). -->
+    <Placemark id="plot-A1">
+      <name>Plot A1</name>
+      <description>Primary survey plot, roughly 1100 m x 1100 m.</description>
+      <ExtendedData>
+        <Data name="owner"><value>Site Operations</value></Data>
+        <Data name="survey_date"><value>2026-03-14</value></Data>
+        <Data name="land_use"><value>industrial</value></Data>
+      </ExtendedData>
+      <Polygon>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>
+              77.5900,12.9700,0 77.6000,12.9700,0 77.6000,12.9800,0 77.5900,12.9800,0 77.5900,12.9700,0
+            </coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+        <innerBoundaryIs>
+          <LinearRing>
+            <coordinates>
+              77.5930,12.9730,0 77.5950,12.9730,0 77.5950,12.9750,0 77.5930,12.9750,0 77.5930,12.9730,0
+            </coordinates>
+          </LinearRing>
+        </innerBoundaryIs>
+      </Polygon>
+    </Placemark>
+
+    <Folder>
+      <name>Linear assets</name>
+
+      <!-- LineString: a length measurement, no area. -->
+      <Placemark id="pipeline-01">
+        <name>Transfer Pipeline</name>
+        <ExtendedData>
+          <SchemaData>
+            <SimpleData name="material">steel</SimpleData>
+            <SimpleData name="diameter_mm">450</SimpleData>
+          </SchemaData>
+        </ExtendedData>
+        <LineString>
+          <coordinates>
+            77.5905,12.9705,0 77.5950,12.9725,0 77.5985,12.9760,0 77.5995,12.9795,0
+          </coordinates>
+        </LineString>
+      </Placemark>
+
+      <!-- MultiGeometry of two lines -> MultiLineString, lengths summed. -->
+      <Placemark id="access-roads">
+        <name>Access Roads</name>
+        <MultiGeometry>
+          <LineString>
+            <coordinates>77.5910,12.9710,0 77.5940,12.9710,0</coordinates>
+          </LineString>
+          <LineString>
+            <coordinates>77.5960,12.9780,0 77.5990,12.9780,0</coordinates>
+          </LineString>
+        </MultiGeometry>
+      </Placemark>
+    </Folder>
+
+    <!-- Point: supported, but carries no measurement by definition. -->
+    <Placemark id="benchmark-01">
+      <name>Survey Benchmark</name>
+      <ExtendedData>
+        <Data name="elevation_m"><value>916</value></Data>
+      </ExtendedData>
+      <Point>
+        <coordinates>77.5946,12.9716,916</coordinates>
+      </Point>
+    </Placemark>
+
+    <!-- MultiGeometry of two polygons -> MultiPolygon, areas summed. -->
+    <Placemark id="storage-pads">
+      <name>Storage Pads</name>
+      <MultiGeometry>
+        <Polygon>
+          <outerBoundaryIs><LinearRing><coordinates>
+            77.6010,12.9700,0 77.6020,12.9700,0 77.6020,12.9710,0 77.6010,12.9710,0 77.6010,12.9700,0
+          </coordinates></LinearRing></outerBoundaryIs>
+        </Polygon>
+        <Polygon>
+          <outerBoundaryIs><LinearRing><coordinates>
+            77.6030,12.9700,0 77.6040,12.9700,0 77.6040,12.9710,0 77.6030,12.9710,0 77.6030,12.9700,0
+          </coordinates></LinearRing></outerBoundaryIs>
+        </Polygon>
+      </MultiGeometry>
+    </Placemark>
+
+  </Document>
+</kml>
