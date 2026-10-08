@@ -1,0 +1,25 @@
+# ---------------------------------------------------------------------------
+# Runtime dependencies
+#
+# Deliberately GDAL-free. Every package below ships prebuilt wheels for
+# Windows / macOS / Linux, so `pip install -r requirements.txt` succeeds on a
+# clean machine with no system libraries, no conda, and no Docker required.
+# See README -> "Design Decisions" for why this matters.
+# ---------------------------------------------------------------------------
+
+fastapi>=0.115,<1.0           # API framework + automatic OpenAPI docs
+uvicorn[standard]>=0.30,<1.0  # ASGI server
+python-multipart>=0.0.9       # multipart/form-data parsing for file uploads
+sqlalchemy>=2.0,<3.0          # ORM (2.0 declarative style)
+pydantic>=2.7,<3.0            # request/response validation
+pydantic-settings>=2.3,<3.0   # 12-factor config from env
+
+shapely>=2.0,<3.0             # geometry model + planar measurement (bundles GEOS)
+pyproj>=3.6,<4.0              # CRS handling, projection, geodesic math (bundles PROJ)
+pyshp>=2.3,<3.0               # pure-Python shapefile reader (no GDAL)
+
+# ---------------------------------------------------------------------------
+# Development / test dependencies
+# ---------------------------------------------------------------------------
+pytest>=8.0,<9.0
+httpx>=0.27,<1.0              # required by fastapi.testclient
