@@ -637,6 +637,6 @@ Ordered by what I would actually do first.
 | Projection / geodesy | pyproj (PROJ bundled) |
 | Shapefile | pyshp |
 | KML | Hand-written, stdlib `xml.etree` |
-| Frontend | Single-file HTML/CSS/JS, no build step |
+| Frontend | Single-file HTML/CSS/JS, no build step; Leaflet map |
 | Tests | pytest |
 | Container | Docker, `python:3.12-slim` |

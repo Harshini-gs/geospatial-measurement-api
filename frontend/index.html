@@ -4,11 +4,19 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Geospatial File Measurement</title>
+
+<!-- Leaflet. Pinned, loaded from a CDN, and entirely optional: if it fails to
+     load the page still renders the full measurement table. See renderMap(). -->
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+      crossorigin="anonymous" referrerpolicy="no-referrer" />
+
 <style>
   /* ---------------------------------------------------------------
-     Single-file UI. No build step, no framework, no CDN -- it is
-     served directly by the API at "/". Keeps the repo runnable with
-     one command.
+     Single-file UI. No build step and no framework -- it is served
+     directly by the API at "/", so the repo stays runnable with one
+     command. Leaflet is the only external dependency and the page
+     degrades gracefully without it.
      --------------------------------------------------------------- */
   :root {
     --bg:        #0f1216;
@@ -92,6 +100,18 @@
   .tile b { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
   .tile span { display: block; font-family: var(--mono); font-size: 17px; margin-top: 4px; }
 
+  /* --- map --- */
+  #map {
+    height: 420px; margin-top: 18px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--surface-2);
+    z-index: 0;   /* keep Leaflet panes below any page chrome */
+  }
+  .leaflet-container { font: inherit; border-radius: var(--radius); }
+  .leaflet-popup-content { margin: 10px 12px; font-size: 13px; line-height: 1.5; }
+  .leaflet-popup-content b { font-size: 13px; }
+  .leaflet-popup-content .m { font-family: var(--mono); font-size: 12px; color: #444; }
+  .maphint { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+
   /* --- table --- */
   .scroll { overflow-x: auto; margin-top: 18px; border: 1px solid var(--border); border-radius: var(--radius); }
   table { border-collapse: collapse; width: 100%; font-size: 13px; }
@@ -99,6 +119,8 @@
   th { background: var(--surface-2); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; position: sticky; top: 0; }
   tbody tr:last-child td { border-bottom: none; }
   tbody tr:hover { background: var(--surface-2); }
+  tbody tr.locatable { cursor: pointer; }
+  tbody tr.active { background: var(--accent-dim); }
   td.num { font-family: var(--mono); text-align: right; }
   td.dim { color: var(--muted); }
   .tag { font-family: var(--mono); font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); }
@@ -127,11 +149,15 @@
 
   <section id="status" class="card hidden"></section>
   <section id="summary" class="hidden"></section>
+  <div id="map" class="hidden"></div>
+  <p id="maphint" class="maphint hidden">Click a row to zoom to that feature.</p>
   <div id="table" class="scroll hidden"></div>
 
   <footer id="foot" class="hidden"></footer>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
 (() => {
   "use strict";
@@ -140,11 +166,16 @@
   const picker  = document.getElementById("picker");
   const statusEl= document.getElementById("status");
   const sumEl   = document.getElementById("summary");
+  const mapEl   = document.getElementById("map");
+  const hintEl  = document.getElementById("maphint");
   const tableEl = document.getElementById("table");
   const footEl  = document.getElementById("foot");
 
   const POLL_MS = 600;
   const POLL_LIMIT = 100;          // ~60s ceiling, then stop and report
+
+  let map = null;                  // Leaflet map instance, created lazily
+  let layerByIndex = new Map();    // feature_index -> Leaflet layer
 
   // --- wiring ------------------------------------------------------------
   drop.addEventListener("click", () => picker.click());
@@ -199,13 +230,13 @@
 
       renderStatus(info);
 
-      if (info.status === "COMPLETED") return loadMeasurements(id, info);
+      if (info.status === "COMPLETED") return loadResults(id);
       if (info.status === "FAILED")    return fail(info.error_message || "Processing failed.");
     }
     fail("Timed out waiting for processing to finish.");
   }
 
-  async function loadMeasurements(id, info) {
+  async function loadResults(id) {
     let data;
     try {
       const res = await fetch(`/api/files/${id}/measurements/?limit=500`);
@@ -214,9 +245,115 @@
     } catch (err) {
       return fail("Could not load measurements.", String(err));
     }
+
     renderSummary(data.summary);
     renderTable(data.measurements);
     renderFooter(id, data);
+
+    // The map is additive: it is fetched separately and any failure here
+    // leaves the measurements above fully intact.
+    loadMap(id).catch(err => console.warn("Map unavailable:", err));
+  }
+
+  // --- map ---------------------------------------------------------------
+  async function loadMap(id) {
+    if (typeof L === "undefined") return;      // CDN blocked or offline
+
+    const res = await fetch(`/api/files/${id}/features/?limit=500`);
+    if (!res.ok) return;
+    const collection = await res.json();
+
+    const drawable = (collection.features || []).filter(
+      f => f.geometry && f.geometry.type && !f.geometry.truncated
+    );
+    if (!drawable.length) return;
+
+    show(mapEl);
+    show(hintEl);
+
+    map = L.map(mapEl, { scrollWheelZoom: false });
+
+    // Both tile sources are keyless. Satellite imagery is offered alongside the
+    // street map because it is the more useful backdrop for survey and
+    // drone-derived data -- you can see the ground the geometry describes.
+    const street = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    });
+    const satellite = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      { maxZoom: 19, attribution: "Imagery &copy; Esri" }
+    );
+
+    street.addTo(map);
+    L.control
+      .layers({ Street: street, Satellite: satellite }, null, { collapsed: false })
+      .addTo(map);
+
+    const accent = getComputedStyle(document.documentElement)
+      .getPropertyValue("--accent").trim() || "#4f9cf9";
+
+    const geo = L.geoJSON(
+      { type: "FeatureCollection", features: drawable },
+      {
+        style: { color: accent, weight: 2.5, opacity: 0.9, fillOpacity: 0.18 },
+        pointToLayer: (_, latlng) =>
+          L.circleMarker(latlng, {
+            radius: 6, color: accent, weight: 2, fillOpacity: 0.7,
+          }),
+        onEachFeature: (feature, layer) => {
+          const p = feature.properties || {};
+          layer.bindPopup(popupHtml(p));
+          if (typeof p._feature_index === "number") {
+            layerByIndex.set(p._feature_index, layer);
+          }
+        },
+      }
+    ).addTo(map);
+
+    map.fitBounds(geo.getBounds(), { padding: [28, 28], maxZoom: 17 });
+    // The container is sized by CSS after Leaflet measures it, so nudge it.
+    setTimeout(() => map.invalidateSize(), 0);
+
+    markLocatableRows();
+  }
+
+  function popupHtml(p) {
+    const m = p._measurement || {};
+    const lines = [];
+    if (p.name) lines.push(esc(p.name));
+    if (m.area_sqm != null)   lines.push(`Area ${fmt(m.area_sqm)} m² (${fmt(m.area_hectares)} ha)`);
+    if (m.perimeter_m != null) lines.push(`Perimeter ${fmt(m.perimeter_m)} m`);
+    if (m.length_m != null)   lines.push(`Length ${fmt(m.length_m)} m`);
+    if (m.measurement_crs)    lines.push(`Measured in ${esc(m.measurement_crs)}`);
+    if (!lines.length)        lines.push("No measurement for this geometry type.");
+
+    return `<b>${esc(p._geometry_type || "Feature")}</b><br>` +
+           `<span class="m">${lines.join("<br>")}</span>`;
+  }
+
+  function markLocatableRows() {
+    document.querySelectorAll("#table tbody tr").forEach(tr => {
+      const index = Number(tr.dataset.index);
+      if (!layerByIndex.has(index)) return;
+
+      tr.classList.add("locatable");
+      tr.addEventListener("click", () => {
+        const layer = layerByIndex.get(index);
+        document.querySelectorAll("#table tbody tr.active")
+                .forEach(r => r.classList.remove("active"));
+        tr.classList.add("active");
+
+        if (layer.getBounds) {
+          map.fitBounds(layer.getBounds(), { padding: [40, 40], maxZoom: 18 });
+        } else {
+          map.setView(layer.getLatLng(), 17);
+        }
+        layer.openPopup();
+        mapEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    });
   }
 
   // --- rendering ---------------------------------------------------------
@@ -283,7 +420,8 @@
     const body = rows.map(r => {
       const m = r.measurement || {};
       const unsupported = !r.supported;
-      return `<tr${unsupported ? ' title="' + esc(r.skip_reason || "") + '"' : ""}>
+      return `<tr data-index="${r.feature_index}"${
+        unsupported ? ' title="' + esc(r.skip_reason || "") + '"' : ""}>
         <td class="num dim">${r.feature_index}</td>
         <td>${esc(r.feature_id ?? "—")}</td>
         <td><span class="tag">${esc(r.geometry_type)}</span></td>
@@ -319,7 +457,13 @@
 
   // --- helpers -----------------------------------------------------------
   function reset() {
-    [sumEl, tableEl, footEl].forEach(el => { el.classList.add("hidden"); el.innerHTML = ""; });
+    if (map) { map.remove(); map = null; }
+    layerByIndex = new Map();
+    [sumEl, tableEl, footEl, mapEl, hintEl].forEach(el => {
+      el.classList.add("hidden");
+      if (el !== mapEl) el.innerHTML = "";
+    });
+    mapEl.innerHTML = "";
     statusEl.innerHTML = "";
   }
   const show  = el => el.classList.remove("hidden");
